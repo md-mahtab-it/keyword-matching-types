@@ -33,34 +33,133 @@ export default function KeywordTool() {
   };
 
   const generateKeywords = useCallback(() => {
-    const validKeywords = keywords.filter(k => k.trim());
-    if (!validKeywords.length || !selectedTypes.length) return;
+    // Split each keyword set into lines and filter empty lines
+    const keywordSets = keywords.map(k => 
+      k.split('\n').map(line => line.trim()).filter(line => line.length > 0)
+    );
+
+    // If no keywords or match types selected, return
+    if (!keywordSets[0].length || !selectedTypes.length) return;
+
+    const orderedTypes: MatchType[] = ['broad', 'modified', 'phrase', 'exact', 'lowercase'];
+    const orderedSelectedTypes = orderedTypes.filter(type => selectedTypes.includes(type));
 
     let result = '';
-    validKeywords.forEach(keyword => {
-      const words = keyword.trim().split(/\s+/);
-      selectedTypes.forEach(type => {
-        let processedKeyword = '';
-        switch(type) {
-          case 'broad':
-            processedKeyword = words.join(separator === 'space' ? ' ' : separator === 'dash' ? '-' : '');
-            break;
-          case 'modified':
-            processedKeyword = '+' + words.join(' +');
-            break;
-          case 'phrase':
-            processedKeyword = `"${words.join(separator === 'space' ? ' ' : separator === 'dash' ? '-' : '')}"`;
-            break;
-          case 'exact':
-            processedKeyword = `[${words.join(separator === 'space' ? ' ' : separator === 'dash' ? '-' : '')}]`;
-            break;
-          case 'lowercase':
-            processedKeyword = words.join(separator === 'space' ? ' ' : separator === 'dash' ? '-' : '').toLowerCase();
-            break;
-        }
-        result += processedKeyword + '\n';
+    
+    // If only first set has keywords, process just those
+    if (keywordSets[0].length > 0 && !keywordSets[1].length && !keywordSets[2].length) {
+      keywordSets[0].forEach(keyword => {
+        orderedSelectedTypes.forEach(type => {
+          let processedKeyword = '';
+          const words = keyword.split(/\s+/);
+          switch(type) {
+            case 'broad':
+              processedKeyword = words.join(separator === 'space' ? ' ' : separator === 'dash' ? '-' : '');
+              break;
+            case 'modified':
+              processedKeyword = '+' + words.join(' +');
+              break;
+            case 'phrase':
+              processedKeyword = `"${words.join(separator === 'space' ? ' ' : separator === 'dash' ? '-' : '')}"`;
+              break;
+            case 'exact':
+              processedKeyword = `[${words.join(separator === 'space' ? ' ' : separator === 'dash' ? '-' : '')}]`;
+              break;
+            case 'lowercase':
+              processedKeyword = words.join(separator === 'space' ? ' ' : separator === 'dash' ? '-' : '').toLowerCase();
+              break;
+          }
+          result += processedKeyword + '\n';
+        });
       });
-    });
+    } 
+    // If multiple sets have keywords, combine them
+    else {
+      // Ensure we have at least one keyword from first set
+      keywordSets[0].forEach(firstWord => {
+        // If second set is empty, use only first word
+        if (!keywordSets[1].length) {
+          orderedSelectedTypes.forEach(type => {
+            let processedKeyword = '';
+            const words = firstWord.split(/\s+/);
+            switch(type) {
+              case 'broad':
+                processedKeyword = words.join(separator === 'space' ? ' ' : separator === 'dash' ? '-' : '');
+                break;
+              case 'modified':
+                processedKeyword = '+' + words.join(' +');
+                break;
+              case 'phrase':
+                processedKeyword = `"${words.join(separator === 'space' ? ' ' : separator === 'dash' ? '-' : '')}"`;
+                break;
+              case 'exact':
+                processedKeyword = `[${words.join(separator === 'space' ? ' ' : separator === 'dash' ? '-' : '')}]`;
+                break;
+              case 'lowercase':
+                processedKeyword = words.join(separator === 'space' ? ' ' : separator === 'dash' ? '-' : '').toLowerCase();
+                break;
+            }
+            result += processedKeyword + '\n';
+          });
+        } else {
+          // Process second set
+          keywordSets[1].forEach(secondWord => {
+            // If third set is empty, combine first and second
+            if (!keywordSets[2].length) {
+              const combinedPhrase = [firstWord, secondWord].join(separator === 'space' ? ' ' : separator === 'dash' ? '-' : '');
+              orderedSelectedTypes.forEach(type => {
+                let processedKeyword = '';
+                switch(type) {
+                  case 'broad':
+                    processedKeyword = combinedPhrase;
+                    break;
+                  case 'modified':
+                    processedKeyword = '+' + combinedPhrase.split(/\s+/).join(' +');
+                    break;
+                  case 'phrase':
+                    processedKeyword = `"${combinedPhrase}"`;
+                    break;
+                  case 'exact':
+                    processedKeyword = `[${combinedPhrase}]`;
+                    break;
+                  case 'lowercase':
+                    processedKeyword = combinedPhrase.toLowerCase();
+                    break;
+                }
+                result += processedKeyword + '\n';
+              });
+            } else {
+              // Process third set
+              keywordSets[2].forEach(thirdWord => {
+                const combinedPhrase = [firstWord, secondWord, thirdWord].join(separator === 'space' ? ' ' : separator === 'dash' ? '-' : '');
+                orderedSelectedTypes.forEach(type => {
+                  let processedKeyword = '';
+                  switch(type) {
+                    case 'broad':
+                      processedKeyword = combinedPhrase;
+                      break;
+                    case 'modified':
+                      processedKeyword = '+' + combinedPhrase.split(/\s+/).join(' +');
+                      break;
+                    case 'phrase':
+                      processedKeyword = `"${combinedPhrase}"`;
+                      break;
+                    case 'exact':
+                      processedKeyword = `[${combinedPhrase}]`;
+                      break;
+                    case 'lowercase':
+                      processedKeyword = combinedPhrase.toLowerCase();
+                      break;
+                  }
+                  result += processedKeyword + '\n';
+                });
+              });
+            }
+          });
+        }
+      });
+    }
+
     setResults(result.trim());
   }, [keywords, selectedTypes, separator]);
 
